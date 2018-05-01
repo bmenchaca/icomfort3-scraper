@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# Don't save the generated MANIFEST file
+MANIFEST
