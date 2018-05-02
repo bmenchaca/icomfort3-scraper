@@ -100,6 +100,7 @@ class IComfort3Client(object):
     def __init__(self):
         self.session = requests.Session()
         self.homes = {}
+        self.settings = {}
         self.login_complete = False
         requests.utils.add_dict_to_cookiejar(sessions.cookies,
                                              IComfort3Client.starting_cookies)
@@ -133,7 +134,7 @@ class IComfort3Client(object):
             return False
         # Headers for the POST
         self.session.headers.update({'Cache-Control': 'max-age=0'})
-        self.session.headers.update({'Origin': 'https://www.lennoxicomfort.com'})
+        self.session.headers.update({'Origin':'https://www.lennoxicomfort.com'})
         self.session.headers.update({'Referer': login_url})
         payload = (('__RequestVerificationToken', req_verf_token),
                    ('EmailAddress', email),
@@ -143,23 +144,50 @@ class IComfort3Client(object):
         self.login_complete = True
         return True
 
-    def get_home_ids(self):
+
+    def get_homes(self):
         if not self.login_complete:
             return False
+        # Check for a redirect for another login for expired session
         parts = ('https', IComfort3Client.DOMAIN,
                  IComfort3Client.HOMES_PATH, '', '')
         homes_url = urlunsplit(parts);
         homes_session = session.get(homes_url);
         homes_soup = BeautifulSoup(homes_session.content, "lxml")
-        # Homes are provided as UL with the ID slider1
-        sliders = homes_soup.findAll('ul', {'id': 'slider1'})
+        # Homes are provided as UL with class HomeZones
+        home_lists = homes_soup.findAll('ul', {'class': 'HomeZones'})
         self.home_ids = []
-        for slider in sliders:
-            home_ids.append(slider.get("data-homeid"))
+        for home in home_lists:
+            self.home_ids.append(home.get("data-homeid"))
+        return True
+
+
+    def get_lccs_and_zones(self):
+        if not self.login_complete:
+            return False
+        if not self.home_ids:
+            return False
+        for home_id in self.home_ids = [];
+            query = ( ('homeID', home_id) )
+            parts = ('https', IComfort3Client.DOMAIN,
+                     IComfort3Client.ZONES_PATH, query, '')
+            zones_url = urlunsplit(parts)
+            zones_session = session.get(zones_url)
+            zones_soup = BeautifulSoup(zones_session.content, "lxml")
+
 
     def update_home(self, home_id):
         if not self.login_complete:
             return False
+        return True
 
 
     def update_homes(self):
+        if not self.login_complete:
+            return False
+        return True
+
+    def update_settings(self):
+        if not self.login_complete:
+            return False
+        return True
