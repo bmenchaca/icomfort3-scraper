@@ -96,11 +96,13 @@ class IComfort3Client(object):
     HOMES_PATH = 'Dashboard/MyHomes'
     ZONES_PATH = 'Dashboard/GetHomeZones'
     DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
+    RELOGIN_LOC = '/Account/Login?_isSessionExpired=True'
 
     def __init__(self):
         self.session = requests.Session()
         self.homes = {}
         self.settings = {}
+        self.climate_systems = {}
         self.login_complete = False
         requests.utils.add_dict_to_cookiejar(sessions.cookies,
                                              IComfort3Client.starting_cookies)
@@ -114,6 +116,20 @@ class IComfort3Client(object):
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'})
 
 
+    def request_url(self, path, query):
+        if not self.login_complete:
+            return 0
+        parts = ('https', IComfort3Client.DOMAIN, path, query, '')
+        url = urlunsplit(parts)
+        session = session.get(zones_url)
+        if zones_session.status_code == 302:
+            if 'Location' in zones_session.headers:
+                if zones_session['Location'] == IComfort3Client.RELOGIN_LOC:
+                        self.login_complete = False
+            return 0
+        return session
+
+
     def login(self, email, password):
         self.session.headers.update({'Referer': "https://www.lennoxicomfort.com/Landing.html"})
         parts = ('https', IComfort3Client.DOMAIN,
@@ -124,7 +140,6 @@ class IComfort3Client(object):
         if login_page.status_code != 200:
             print "Could not load login page."
             return False
-
         login_page_soup = BeautifulSoup(login_page.content, "lxml")
         try:
             form = login_page_soup.find('form')
@@ -152,7 +167,9 @@ class IComfort3Client(object):
         parts = ('https', IComfort3Client.DOMAIN,
                  IComfort3Client.HOMES_PATH, '', '')
         homes_url = urlunsplit(parts);
-        homes_session = session.get(homes_url);
+        homes_session = request_url(IComfort3Client.HOMES_PATH, '')
+        if not homes_session:
+            return False
         homes_soup = BeautifulSoup(homes_session.content, "lxml")
         # Homes are provided as UL with class HomeZones
         home_lists = homes_soup.findAll('ul', {'class': 'HomeZones'})
@@ -167,13 +184,19 @@ class IComfort3Client(object):
             return False
         if not self.home_ids:
             return False
-        for home_id in self.home_ids = [];
+        for home_id in self.home_ids:
             query = ( ('homeID', home_id) )
-            parts = ('https', IComfort3Client.DOMAIN,
-                     IComfort3Client.ZONES_PATH, query, '')
-            zones_url = urlunsplit(parts)
-            zones_session = session.get(zones_url)
+            zones_session = request_url(IComfort3Client.ZONES_PATH, query)
             zones_soup = BeautifulSoup(zones_session.content, "lxml")
+            zones_list_items = homes_soup.findAll('li')
+            for list_item in zones_list_items:
+                link = list_item.findAll('a', href=True)
+                assert len(link) == 1
+                params = urlparse.parse_qs(urlparse.urlparse(link['href']))
+                lcc_id = params['lccId']
+                zone_id = params['zoneId']
+                if lcc_id not in self.climate_systems:
+
 
 
     def update_home(self, home_id):
