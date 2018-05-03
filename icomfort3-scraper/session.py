@@ -88,24 +88,19 @@ except ImportError:
      /Account/Login?_isSessionExpired=True
   This means we need to log in again, so set login = false, and clear the data.
 """
-class IComfort3Client(object):
+class IComfort3Session(object):
 
-    STARTING_COOKIES = { 'iComfort': 'ic3' }
     DOMAIN = 'www.lennoxicomfort.com'
+    STARTING_COOKIES = { 'iComfort': 'ic3' }
     LOGIN_PATH = 'Account/Login'
-    HOMES_PATH = 'Dashboard/MyHomes'
-    ZONES_PATH = 'Dashboard/GetHomeZones'
-    DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
     RELOGIN_LOC = '/Account/Login?_isSessionExpired=True'
+                if zones_session['Location'] == IComfort3Client.RELOGIN_LOC:
 
     def __init__(self):
         self.session = requests.Session()
-        self.homes = {}
-        self.settings = {}
-        self.climate_systems = {}
         self.login_complete = False
         requests.utils.add_dict_to_cookiejar(sessions.cookies,
-                                             IComfort3Client.starting_cookies)
+                                             IComfort3Session.starting_cookies)
         self.session.headers.update({'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/apng,*/*;q=0.8'})
         self.session.headers.update({'Accept-Encoding': 'gzip, default, br'})
         self.session.headers.update({'Accept-Language': 'en-US,en;q=0.8'})
@@ -116,101 +111,67 @@ class IComfort3Client(object):
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'})
 
 
-    def request_url(self, path, query):
+    def request_url(self, url, referer_url=''):
+        referer_header = {}
         if not self.login_complete:
             return 0
-        parts = ('https', IComfort3Client.DOMAIN, path, query, '')
-        url = urlunsplit(parts)
-        session = session.get(zones_url)
-        if zones_session.status_code == 302:
-            if 'Location' in zones_session.headers:
-                if zones_session['Location'] == IComfort3Client.RELOGIN_LOC:
+        if referer_url:
+            headers['Referer'] = referer_url 
+        resp = self.session.get(url, headers=referer_header)
+        if resp.status_code == 302:
+            if 'Location' in resp.headers:
+                if resp.headers['Location'] == IComfort3Session.RELOGIN_LOC:
                         self.login_complete = False
             return 0
         return session
 
+    def request_json(self, url, referer_url=''):
+        referer_header = {}
+        if not self.login_complete:
+            return 0
+        if referer_url:
+            headers['Referer'] = referer_url 
+        response_json = self.session.get(url, headers=referer_header).json()
+        response_code = response_json['Code']
+        # We don't know what happened here - can't parse.
+        # FIXME: Print probably?
+        if not response_code:
+            return False
+        # Request failed - our session is invalid
+        if response_code == 'Fail':
+            self.login_complete = False
+        return response_json
+
+
+    @classmethod
+    def create_url(cls, path, query=''):
+        parts = ('https', cls.DOMAIN, path, query, '')
+        return urlunsplit(parts)
+
 
     def login(self, email, password):
-        self.session.headers.update({'Referer': "https://www.lennoxicomfort.com/Landing.html"})
-        parts = ('https', IComfort3Client.DOMAIN,
-                 IComfort3Client.LOGIN_PATH, '', '')
+        login_ref = {'Referer': "https://www.lennoxicomfort.com/Landing.html"}
+        parts = ('https', IComfort3Session.DOMAIN,
+                 IComfort3Session.LOGIN_PATH, '', '')
         login_url = urlunsplit(parts)
-        login_page = self.session.get(login_url,
-                                      IComfort3Client.starting_cookies)
+        login_page = self.session.get(login_url, headers=login_ref)
         if login_page.status_code != 200:
             print "Could not load login page."
             return False
         login_page_soup = BeautifulSoup(login_page.content, "lxml")
-        try:
-            form = login_page_soup.find('form')
-            req_verf_token = form.find('input', {'name': '__RequestVerificationToken'}).get('value')
-        except:
-            print "Could not find token."
-            return False
+        form = login_page_soup.find('form')
+        token_entry = {'name': '__RequestVerificationToken'}
+        req_verf_token = form.find('input', token_entry).get('value')
+        # Handle not finding token
         # Headers for the POST
-        self.session.headers.update({'Cache-Control': 'max-age=0'})
-        self.session.headers.update({'Origin':'https://www.lennoxicomfort.com'})
-        self.session.headers.update({'Referer': login_url})
+        post_heads = {}
+        post_heads['Referer'] = login_url
+        post_heads['Cache-Control'] = 'max-age=0'
+        post_heads['Origin'] = 'https://www.lennoxicomfort.com'
         payload = (('__RequestVerificationToken', req_verf_token),
                    ('EmailAddress', email),
                    ('Password', password))
-        logged_in = session.post(login_url, data=payload)
+        logged_in = session.post(login_url, headers=post_heads, data=payload)
         # Test if we are logged in - check for login error?
         self.login_complete = True
-        return True
-
-
-    def get_homes(self):
-        if not self.login_complete:
-            return False
-        # Check for a redirect for another login for expired session
-        parts = ('https', IComfort3Client.DOMAIN,
-                 IComfort3Client.HOMES_PATH, '', '')
-        homes_url = urlunsplit(parts);
-        homes_session = request_url(IComfort3Client.HOMES_PATH, '')
-        if not homes_session:
-            return False
-        homes_soup = BeautifulSoup(homes_session.content, "lxml")
-        # Homes are provided as UL with class HomeZones
-        home_lists = homes_soup.findAll('ul', {'class': 'HomeZones'})
-        self.home_ids = []
-        for home in home_lists:
-            self.home_ids.append(home.get("data-homeid"))
-        return True
-
-
-    def get_lccs_and_zones(self):
-        if not self.login_complete:
-            return False
-        if not self.home_ids:
-            return False
-        for home_id in self.home_ids:
-            query = ( ('homeID', home_id) )
-            zones_session = request_url(IComfort3Client.ZONES_PATH, query)
-            zones_soup = BeautifulSoup(zones_session.content, "lxml")
-            zones_list_items = homes_soup.findAll('li')
-            for list_item in zones_list_items:
-                link = list_item.findAll('a', href=True)
-                assert len(link) == 1
-                params = urlparse.parse_qs(urlparse.urlparse(link['href']))
-                lcc_id = params['lccId']
-                zone_id = params['zoneId']
-                if lcc_id not in self.climate_systems:
-
-
-
-    def update_home(self, home_id):
-        if not self.login_complete:
-            return False
-        return True
-
-
-    def update_homes(self):
-        if not self.login_complete:
-            return False
-        return True
-
-    def update_settings(self):
-        if not self.login_complete:
-            return False
         return True
