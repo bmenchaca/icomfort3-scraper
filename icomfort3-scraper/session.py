@@ -5,6 +5,7 @@ import re
 import ssl
 import json
 import time
+import requests
 
 try:
     from urllib.parse import urlencode, urlunsplit
@@ -12,11 +13,11 @@ except ImportError:
     from urlparse import urlunsplit
     from urllib import urlencode
 
-    import requests
-    from bs4 import BeautifulSoup
+import requests
+from bs4 import BeautifulSoup
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.WARN)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARN)
 
 """
   Most of the information below is from the User Manual at:
@@ -94,13 +95,12 @@ class IComfort3Session(object):
     STARTING_COOKIES = { 'iComfort': 'ic3' }
     LOGIN_PATH = 'Account/Login'
     RELOGIN_LOC = '/Account/Login?_isSessionExpired=True'
-                if zones_session['Location'] == IComfort3Client.RELOGIN_LOC:
 
     def __init__(self):
         self.session = requests.Session()
         self.login_complete = False
-        requests.utils.add_dict_to_cookiejar(sessions.cookies,
-                                             IComfort3Session.starting_cookies)
+        requests.utils.add_dict_to_cookiejar(self.session.cookies,
+                                             IComfort3Session.STARTING_COOKIES)
         self.session.headers.update({'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/apng,*/*;q=0.8'})
         self.session.headers.update({'Accept-Encoding': 'gzip, default, br'})
         self.session.headers.update({'Accept-Language': 'en-US,en;q=0.8'})
@@ -130,21 +130,37 @@ class IComfort3Session(object):
         if not self.login_complete:
             return 0
         if referer_url:
-            headers['Referer'] = referer_url 
-        response_json = self.session.get(url, headers=referer_header).json()
-        response_code = response_json['Code']
+            referer_header['Referer'] = referer_url 
+        response = self.session.get(url, headers=referer_header)
+        print("URL was: %s" % response.request.url)
+        print("Request Headers: %s" % response.request.headers)
+        print("Content Type: %s" % response.headers['content-type'])
+        if response.headers['content-type'] == 'text/html; charset=utf-8':
+            print("Response is HTML.")
+            html_soup = BeautifulSoup(response.content, "lxml")
+            divs = html_soup.findAll("div", {"class": "tsbody"})
+            if divs[0]:
+                p = divs[0].findAll("p")[0]
+                text = p.getText()
+                if text.find("technical difficulties"):
+                    print("You have technical difficulties.")
+            return {}
+        else:
+            response_json = response.json()
+            response_code = response_json['Code']
         # We don't know what happened here - can't parse.
         # FIXME: Print probably?
-        if not response_code:
-            return False
+            if not response_code:
+                return False
         # Request failed - our session is invalid
-        if response_code == 'Fail':
-            self.login_complete = False
-        return response_json
+            if response_code == 'Fail':
+                self.login_complete = False
+            return response_json
 
 
     @classmethod
-    def create_url(cls, path, query=''):
+    def create_url(cls, path, query_params=''):
+        query = urlencode(query_params)
         parts = ('https', cls.DOMAIN, path, query, '')
         return urlunsplit(parts)
 
@@ -156,7 +172,7 @@ class IComfort3Session(object):
         login_url = urlunsplit(parts)
         login_page = self.session.get(login_url, headers=login_ref)
         if login_page.status_code != 200:
-            print "Could not load login page."
+            print("Could not load login page.")
             return False
         login_page_soup = BeautifulSoup(login_page.content, "lxml")
         form = login_page_soup.find('form')
@@ -171,7 +187,8 @@ class IComfort3Session(object):
         payload = (('__RequestVerificationToken', req_verf_token),
                    ('EmailAddress', email),
                    ('Password', password))
-        logged_in = session.post(login_url, headers=post_heads, data=payload)
+        logged_in = self.session.post(login_url, headers=post_heads,
+                                      data=payload)
         # Test if we are logged in - check for login error?
         self.login_complete = True
         return True

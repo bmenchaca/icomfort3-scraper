@@ -1,6 +1,8 @@
 import logging
 import time
 import json
+import random
+from session import IComfort3Session
 
 try:
     from urllib.parse import urlencode, urlunsplit
@@ -8,11 +10,11 @@ except ImportError:
     from urlparse import urlunsplit
     from urllib import urlencode
 
-    import requests
-    from bs4 import BeautifulSoup
+import requests
+from bs4 import BeautifulSoup
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.WARN)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARN)
 
 """
   Most of the information below is from the User Manual at:
@@ -80,28 +82,28 @@ except ImportError:
   uname/password changes will fix this issue (for 15 minutes).
 """
 class IComfort3Zone(object):
-    UPDATE_REFERER_PATH = 'Dashboard/HomeDetails' 
+    HD_REFERER_PATH = 'Dashboard/HomeDetails'
     DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
-        self.home_id = home_id
-        self.lcc_id = lcc_id
-        self.zone_id = zone_id
+        self.zone_id = str(zone_id)
+        self.home_id = str(home_id)
+        self.lcc_id = str(lcc_id)
 
     def __send_update_request(self, session):
         details_referer_query = ( ('zoneId', self.zone_id),
                                   ('homeId', self.home_id),
                                   ('lcc_Id', self.lcc_id),
-                                  ('refreshZonedeail', 'False') )
-        referer_url = IComfort3Session.create_url(DETAILS_PATH,
-                                                  self.details_referer_query)  
-        current_millis = (int(time.time()) * 1000), + random.randint(0, 999)
+                                  ('refreshZonedetail', 'False') )
+        referer_url = IComfort3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
+                                                  details_referer_query)  
+        current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
         details_query = ( ('zoneId', self.zone_id), ('isPolling', 'true'),
                           ('lccId', self.lcc_id), ('_', str(current_millis)) )
-        update_url = IComfort3Session.create_url(UPDATE_REFERER_PATH,
-                                                 details_referer_query)
-        update = session.request_json(update_url, referer_url)
+        up_url = IComfort3Session.create_url(IComfort3Zone.DETAILS_PATH,
+                                                 details_query)
+        update = session.request_json(up_url, referer_url)
         return update
 
 
@@ -109,27 +111,26 @@ class IComfort3Zone(object):
     def __parse_update(self, update):
         if not update['Code'] == 'LCC_ONLINE':
             return False
-        flat = dict((k,v) for k,v in update['data']['zoneDetail']
+        # Remove Unused temperature Range
+        update.pop['data']['zoneDetail']['TemperatureRange']
+        # Copy all other zone details
+        flat = dict((k,v) for k,v in update['data']['zoneDetail'])
         # Ambient temp comes across not flattened, and as a string
         flat['AmbientTemperature'] = int(flat['AmbientTemperature']['Value'])
         flat['CoolSetPoint'] = flat['CoolSetPoint']['Value']
         flat['HeatSetPoint'] = flat['HeatSetPoint']['Value']
         flat['SingleSetPoint'] = flat['SingleSetPoint']['Value']
         # Done with zone detail now - pop
+        update.pop['data']['zoneDetail']
+        # Don't use paging - remove
         update.pop['data']['zonepaging']
         # Copy the rest of data
+        for (k,v) in update['data']:
+            flat[k] = v
+        flat['Code'] = update['Code']
+        return flat
+
     
-        # Flatten temp entries
-        self.HomeName = update['data']['HomeName']
-        self.centralMode = update['data']['centralMode']
-        self.isSysteminAwayMode = update['data']['isSysteminAwayMode']
-        self.sysNotificationCount = update['data']['sysNotificationCount']
-        self.systemName = update['data']['systemName']       
-        if self.sysNotificationCount:
-            __update_notifications(
-        self.zoneDetail = update['data']['zoneDetail']
-
-
     def fetch_update(self, session):
         """ Fetches an update from the web API.
 
@@ -150,10 +151,10 @@ class IComfort3Zone(object):
             The session is now expired
             The system is not currently accessible
         """
-        update_json = __send_update_request(session)
+        update_json = self.__send_update_request(session)
         if not update_json:
             return False
-        return __parse_update(update_json)
+        return self.__parse_update(update_json)
 
     # FIXME: Do we want getters/setters for each variable?
     def fetch_home_name(self, session):
