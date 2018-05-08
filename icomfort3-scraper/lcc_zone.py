@@ -184,3 +184,28 @@ class IComfort3Zone(object):
         if not resp_json:
             return False
         return self.__parse_update(resp_json)
+
+    def change_set_point(self, session, cool, heat)
+        """ Set new heat/cool ScheduleHold values.
+
+            By default, these changes will last until the next Period.
+
+            Args:
+                cool: The value above which the LCC should cool the zone.  If in
+                heating mode, this parameter must be set to minCSP.
+
+                heat: The value below which the LCC should heat the zone.  If in
+                cooling only mode, this parameter must be set to maxHSP.
+
+            FIXME: Does not support PerfectTemp today.
+        """
+        current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
+        query = [('zoneId', self.zone_id), 'lccId', self.lcc_id),
+                 ('coolSetPoint', str(cool)), ('heatSetPoint', str(heat)),
+                 ('isPerfectTempOn', 'false'), ('_', str(current_millis))]
+        change_url = IC3Session.create_url(IComfort3Zone.CHANGE_SET_POINT,
+                                           query)
+        update = session.request_json(change_url, referer_url=self.hd_url)
+        return update
+
+
