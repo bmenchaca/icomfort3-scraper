@@ -102,3 +102,6 @@ ENV/
 
 # Don't save the generated MANIFEST file
 MANIFEST
+
+# Ignore all secrets files
+icomfort3-scraper/secrets.py
