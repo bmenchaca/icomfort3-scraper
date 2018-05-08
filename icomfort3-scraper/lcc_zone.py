@@ -85,26 +85,27 @@ class IComfort3Zone(object):
     HD_REFERER_PATH = 'Dashboard/HomeDetails'
     DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
     SET_AWAY_PATH = 'Dashboard/SetAwayMode'
+    CANCEL_AWAY_PATH = 'Dashboard/CancelAwayMode'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
         self.zone_id = str(zone_id)
         self.home_id = str(home_id)
         self.lcc_id = str(lcc_id)
-
-    def __send_update_request(self, session):
         details_referer_query = ( ('zoneId', self.zone_id),
                                   ('homeId', self.home_id),
                                   ('lccId', self.lcc_id),
                                   ('refreshZonedetail', 'False') )
-        referer_url = IC3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
+        self.hd_url = IC3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
                                             details_referer_query)  
+
+    def __send_update_request(self, session):
         current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
         details_query = ( ('zoneid', self.zone_id), ('isPolling', 'true'),
                           ('lccid', self.lcc_id), ('_', str(current_millis)) )
         up_url = IC3Session.create_url(IComfort3Zone.DETAILS_PATH,
                                                  details_query)
-        update = session.request_json(up_url, referer_url)
+        update = session.request_json(up_url, self.hd_url)
         return update
 
 
@@ -163,10 +164,23 @@ class IComfort3Zone(object):
 
 
     def set_away_mode(self, session):
-        """ Post to set away mode for an LCC/Zone, and return current state.
+        """ Post to set away mode for an LCC/Zone, and returns current state.
         """
         set_away_url = IC3Session.create_url(IComfort3Zone.SET_AWAY_PATH)
-        pass
+        payload = [('lccId', self.lcc_id), ('currentzoneId', self. zone_id)]
+        resp_json = session.post_url_json(set_away_url, payload, self.hd_url)
+        if not resp_json:
+            return False
+        return self.__parse_update(resp_json)
 
 
-
+    def cancel_away_mode(self, session):
+        """ Post to cancel away mode for an LCC/Zone, and returns current state.
+        """
+        cancel_away_url = IC3Session.create_url(IComfort3Zone.CANCEL_AWAY_PATH)
+        payload = [('lccId', self.lcc_id), ('currentzoneId', self. zone_id),
+                   ('smartawayS', 'false')]
+        resp_json = session.post_url_json(cancel_away_url, payload, self.hd_url)
+        if not resp_json:
+            return False
+        return self.__parse_update(resp_json)

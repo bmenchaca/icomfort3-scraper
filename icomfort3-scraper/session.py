@@ -138,16 +138,20 @@ class IComfort3Session(object):
         return resp
 
 
-    def request_json(self, url, referer_url=''):
-        header_dict = {}
-        header_dict['X-Requested-With'] = 'XMLHttpRequest'
-        header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-        header_dict['ADRUM'] = 'isAjax:true'
+    def post_url_json(self, url, post_data=[], referer_url=''):
         if not self.login_complete:
             return 0
+        post_heads = {}
         if referer_url:
-            header_dict['Referer'] = referer_url 
-        response = self.session.get(url, headers=header_dict)
+            post_heads['Referer'] = referer_url
+        post_heads['Origin'] = "https://" + IComfort3Session.DOMAIN
+        post_heads['X-Requested-With'] = 'XMLHttpRequest'
+        post_heads['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        resp = self.session.post(url, headers=post_heads, data=post_data)
+        return self.__process_as_json(resp)
+        
+
+    def __process_as_json(self, response):
         if response.headers['content-type'] == 'text/html; charset=utf-8':
             print("Response is HTML.")
             html_soup = BeautifulSoup(response.content, "lxml")
@@ -173,6 +177,19 @@ class IComfort3Session(object):
                 self.login_complete = False
                 return False
             return response_json
+
+
+    def request_json(self, url, referer_url=''):
+        if not self.login_complete:
+            return 0
+        header_dict = {}
+        header_dict['X-Requested-With'] = 'XMLHttpRequest'
+        header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        header_dict['ADRUM'] = 'isAjax:true'
+        if referer_url:
+            header_dict['Referer'] = referer_url 
+        response = self.session.get(url, headers=header_dict)
+        return self.__process_as_json(response)
 
 
     @classmethod
