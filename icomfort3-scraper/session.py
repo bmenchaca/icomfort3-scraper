@@ -8,9 +8,9 @@ import time
 import requests
 
 try:
-    from urllib.parse import urlencode, urlunsplit
+    from urllib.parse import urlencode, urlunsplit, urlparse, parse_qs
 except ImportError:
-    from urlparse import urlunsplit
+    from urlparse import urlunsplit, urlparse, parse_qs
     from urllib import urlencode
 
 import requests
@@ -148,9 +148,6 @@ class IComfort3Session(object):
         if referer_url:
             header_dict['Referer'] = referer_url 
         response = self.session.get(url, headers=header_dict)
-        print("URL was: %s" % response.request.url)
-        print("Request Headers: %s" % response.request.headers)
-        print("Content Type: %s" % response.headers['content-type'])
         if response.headers['content-type'] == 'text/html; charset=utf-8':
             print("Response is HTML.")
             html_soup = BeautifulSoup(response.content, "lxml")
@@ -175,7 +172,6 @@ class IComfort3Session(object):
                 print(response_json)
                 self.login_complete = False
                 return False
-            print(response_json)
             return response_json
 
 
@@ -191,21 +187,22 @@ class IComfort3Session(object):
         # machine so that polling can start.
         # First, pull the list of homes
         my_homes_url = IComfort3Session.create_url('Dashboard/MyHomes')
-        my_homes = self.session.get(myhomes_url)
+        my_homes = self.session.get(my_homes_url)
         my_homes_soup = BeautifulSoup(my_homes.content, "lxml")
         home_lists = my_homes_soup.findAll('ul', {'class': 'HomeZones'})
         for home in home_lists:
             self.homes[home.get("data-homeid")] = []
         # Iterate over the list of homes, and pull all of the LCC_ID/Zones
         for home in self.homes.keys():
-            home_zones_query = {'homeID': home_id}
-            home_zones = self.session.get(home_zones_url, params=home_zones_query)
-            home_zones_soup = BeautifulSoup(home_zones.content, "lxml");
-            hrefs = home_zones_soup.findAll('a', href=True)
+            zones_url = IComfort3Session.create_url('Dashboard/GetHomeZones')
+            zones_query = {'homeID': home}
+            zones = self.session.get(zones_url, params=zones_query)
+            zones_soup = BeautifulSoup(zones.content, "lxml");
+            hrefs = zones_soup.findAll('a', href=True)
             for href in hrefs:
                 params = parse_qs(urlparse(href['href']).query)
-                self.homes[home].append((params['lddId'][0], params['zoneId'][0]))
-        print(self.homes)
+                self.homes[home].append((params['lccId'][0],
+                                         params['zoneId'][0]))
         self.initialized = True
         return True    
 

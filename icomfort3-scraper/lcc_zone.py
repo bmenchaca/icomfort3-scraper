@@ -7,7 +7,7 @@ from session import IComfort3Session
 try:
     from urllib.parse import urlencode, urlunsplit
 except ImportError:
-    from urlparse import urlunsplit
+    from urlparse import urlunsplit, urlparse
     from urllib import urlencode
 
 import requests
