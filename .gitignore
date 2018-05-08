@@ -105,3 +105,8 @@ MANIFEST
 
 # Ignore all secrets files
 icomfort3-scraper/secrets.py
+
+# vim temp files
+*~
+*.swp
+*.swo
