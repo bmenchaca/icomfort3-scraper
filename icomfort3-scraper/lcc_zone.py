@@ -94,13 +94,13 @@ class IComfort3Zone(object):
     def __send_update_request(self, session):
         details_referer_query = ( ('zoneId', self.zone_id),
                                   ('homeId', self.home_id),
-                                  ('lcc_Id', self.lcc_id),
+                                  ('lccId', self.lcc_id),
                                   ('refreshZonedetail', 'False') )
         referer_url = IComfort3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
                                                   details_referer_query)  
         current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
-        details_query = ( ('zoneId', self.zone_id), ('isPolling', 'true'),
-                          ('lccId', self.lcc_id), ('_', str(current_millis)) )
+        details_query = ( ('zoneid', self.zone_id), ('isPolling', 'true'),
+                          ('lccid', self.lcc_id), ('_', str(current_millis)) )
         up_url = IComfort3Session.create_url(IComfort3Zone.DETAILS_PATH,
                                                  details_query)
         update = session.request_json(up_url, referer_url)
@@ -112,20 +112,26 @@ class IComfort3Zone(object):
         if not update['Code'] == 'LCC_ONLINE':
             return False
         # Remove Unused temperature Range
-        update.pop['data']['zoneDetail']['TemperatureRange']
-        # Copy all other zone details
-        flat = dict((k,v) for k,v in update['data']['zoneDetail'])
-        # Ambient temp comes across not flattened, and as a string
-        flat['AmbientTemperature'] = int(flat['AmbientTemperature']['Value'])
-        flat['CoolSetPoint'] = flat['CoolSetPoint']['Value']
-        flat['HeatSetPoint'] = flat['HeatSetPoint']['Value']
-        flat['SingleSetPoint'] = flat['SingleSetPoint']['Value']
-        # Done with zone detail now - pop
-        update.pop['data']['zoneDetail']
-        # Don't use paging - remove
-        update.pop['data']['zonepaging']
+        # Check if zoneDetail exists
+        flat = dict()
+        if update['data']['zoneDetail']:
+            # Copy all other zone details
+            for (k,v) in update['data']['zoneDetail'].items():
+                flat[k] = v
+            # Ambient temp comes across not flattened, and as a string
+            flat['AmbientTemperature'] = flat['AmbientTemperature']['Value']
+            flat['AmbientTemperature'] = int(flat['AmbientTemperature'])
+            flat['CoolSetPoint'] = flat['CoolSetPoint']['Value']
+            flat['HeatSetPoint'] = flat['HeatSetPoint']['Value']
+            flat['SingleSetPoint'] = flat['SingleSetPoint']['Value']
+            # This is only for visuals
+            del flat['TemperatureRange']
+            # Done with zone detail now - pop
+            print("No zone details.")
+        del update['data']['zoneDetail']
+        del update['data']['zonepaging']
         # Copy the rest of data
-        for (k,v) in update['data']:
+        for (k,v) in update['data'].items():
             flat[k] = v
         flat['Code'] = update['Code']
         return flat

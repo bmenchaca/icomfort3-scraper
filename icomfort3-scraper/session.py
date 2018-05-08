@@ -101,37 +101,50 @@ class IComfort3Session(object):
         self.login_complete = False
         requests.utils.add_dict_to_cookiejar(self.session.cookies,
                                              IComfort3Session.STARTING_COOKIES)
-        self.session.headers.update({'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/apng,*/*;q=0.8'})
-        self.session.headers.update({'Accept-Encoding': 'gzip, default, br'})
+        self.session.headers.update({'Accept-Encoding': 'gzip, deflate, br'})
         self.session.headers.update({'Accept-Language': 'en-US,en;q=0.8'})
         self.session.headers.update({'Connection': 'keep-alive'})
         self.session.headers.update({'DNT': '1'})
         self.session.headers.update({'Host': 'www.lennoxicomfort.com'})
-        self.session.headers.update({'Upgrade-Insecure-Requests': '1'})
-        self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'})
-
+        self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'})
 
     def request_url(self, url, referer_url=''):
-        referer_header = {}
+        header_dict = {}
+        header_dict['Upgrade-Insecure-Requests'] = '1'
+        header_dict['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/apng,*/*;q=0.8'
         if not self.login_complete:
             return 0
         if referer_url:
-            headers['Referer'] = referer_url 
-        resp = self.session.get(url, headers=referer_header)
+            header_dict['Referer'] = referer_url
+
+        resp = self.session.get(url, headers=header_dict)
         if resp.status_code == 302:
             if 'Location' in resp.headers:
                 if resp.headers['Location'] == IComfort3Session.RELOGIN_LOC:
                         self.login_complete = False
             return 0
-        return session
+        return resp
+
+
+    def post_url(self, url, post_data=[], referer_url=''):
+        post_heads = {}
+        if referer_url:
+            post_heads['Referer'] = referer_url
+        post_heads['Origin'] = "https://" + IComfort3Session.DOMAIN
+        resp = self.session.post(url, headers=post_heads, data=post_data)
+        return resp
+
 
     def request_json(self, url, referer_url=''):
-        referer_header = {}
+        header_dict = {}
+        header_dict['X-Requested-With'] = 'XMLHttpRequest'
+        header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        header_dict['ADRUM'] = 'isAjax:true'
         if not self.login_complete:
             return 0
         if referer_url:
-            referer_header['Referer'] = referer_url 
-        response = self.session.get(url, headers=referer_header)
+            header_dict['Referer'] = referer_url 
+        response = self.session.get(url, headers=header_dict)
         print("URL was: %s" % response.request.url)
         print("Request Headers: %s" % response.request.headers)
         print("Content Type: %s" % response.headers['content-type'])
@@ -139,7 +152,7 @@ class IComfort3Session(object):
             print("Response is HTML.")
             html_soup = BeautifulSoup(response.content, "lxml")
             divs = html_soup.findAll("div", {"class": "tsbody"})
-            if divs[0]:
+            if divs:
                 p = divs[0].findAll("p")[0]
                 text = p.getText()
                 if text.find("technical difficulties"):
@@ -151,10 +164,16 @@ class IComfort3Session(object):
         # We don't know what happened here - can't parse.
         # FIXME: Print probably?
             if not response_code:
+                print("Could not find resonse code.")
+                print(response_json)
                 return False
         # Request failed - our session is invalid
             if response_code == 'Fail':
+                print("Response code was Fail.")
+                print(response_json)
                 self.login_complete = False
+                return False
+            print(response_json)
             return response_json
 
 
@@ -166,11 +185,12 @@ class IComfort3Session(object):
 
 
     def login(self, email, password):
-        login_ref = {'Referer': "https://www.lennoxicomfort.com/Landing.html"}
+        header_dict = {}
+        header_dict['Referer'] = "https://www.lennoxicomfort.com/Landing.html"
         parts = ('https', IComfort3Session.DOMAIN,
                  IComfort3Session.LOGIN_PATH, '', '')
         login_url = urlunsplit(parts)
-        login_page = self.session.get(login_url, headers=login_ref)
+        login_page = self.session.get(login_url, headers=header_dict)
         if login_page.status_code != 200:
             print("Could not load login page.")
             return False
@@ -184,9 +204,9 @@ class IComfort3Session(object):
         post_heads['Referer'] = login_url
         post_heads['Cache-Control'] = 'max-age=0'
         post_heads['Origin'] = 'https://www.lennoxicomfort.com'
-        payload = (('__RequestVerificationToken', req_verf_token),
+        payload = [('__RequestVerificationToken', req_verf_token),
                    ('EmailAddress', email),
-                   ('Password', password))
+                   ('Password', password)]
         logged_in = self.session.post(login_url, headers=post_heads,
                                       data=payload)
         # Test if we are logged in - check for login error?
