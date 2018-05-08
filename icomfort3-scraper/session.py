@@ -100,6 +100,8 @@ class IComfort3Session(object):
         self.session = requests.Session()
         self.login_complete = False
         self.initialized = False
+        self.homes = {}
+
         requests.utils.add_dict_to_cookiejar(self.session.cookies,
                                              IComfort3Session.STARTING_COOKIES)
         self.session.headers.update({'Accept-Encoding': 'gzip, deflate, br'})
@@ -184,8 +186,28 @@ class IComfort3Session(object):
         return urlunsplit(parts)
 
 
-    def __initial_requests(self):
-        pass    
+    def __initialize_session(self):
+        # Pulls the list of Homes, LCCs, and Zones, and initializes the back-end state
+        # machine so that polling can start.
+        # First, pull the list of homes
+        my_homes_url = IComfort3Session.create_url('Dashboard/MyHomes')
+        my_homes = self.session.get(myhomes_url)
+        my_homes_soup = BeautifulSoup(my_homes.content, "lxml")
+        home_lists = my_homes_soup.findAll('ul', {'class': 'HomeZones'})
+        for home in home_lists:
+            self.homes[home.get("data-homeid")] = []
+        # Iterate over the list of homes, and pull all of the LCC_ID/Zones
+        for home in self.homes.keys():
+            home_zones_query = {'homeID': home_id}
+            home_zones = self.session.get(home_zones_url, params=home_zones_query)
+            home_zones_soup = BeautifulSoup(home_zones.content, "lxml");
+            hrefs = home_zones_soup.findAll('a', href=True)
+            for href in hrefs:
+                params = parse_qs(urlparse(href['href']).query)
+                self.homes[home].append((params['lddId'][0], params['zoneId'][0]))
+        print(self.homes)
+        self.initialized = True
+        return True    
 
 
     def login(self, email, password):
@@ -215,4 +237,4 @@ class IComfort3Session(object):
                                       data=payload)
         # Test if we are logged in - check for login error?
         self.login_complete = True
-        return True
+        return self.__initialize_session()
