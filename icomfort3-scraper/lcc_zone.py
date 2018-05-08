@@ -2,7 +2,7 @@ import logging
 import time
 import json
 import random
-from session import IComfort3Session
+from session import IComfort3Session as IC3Session
 
 try:
     from urllib.parse import urlencode, urlunsplit
@@ -84,6 +84,7 @@ logger.setLevel(logging.WARN)
 class IComfort3Zone(object):
     HD_REFERER_PATH = 'Dashboard/HomeDetails'
     DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
+    SET_AWAY_PATH = 'Dashboard/SetAwayMode'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
@@ -96,12 +97,12 @@ class IComfort3Zone(object):
                                   ('homeId', self.home_id),
                                   ('lccId', self.lcc_id),
                                   ('refreshZonedetail', 'False') )
-        referer_url = IComfort3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
-                                                  details_referer_query)  
+        referer_url = IC3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
+                                            details_referer_query)  
         current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
         details_query = ( ('zoneid', self.zone_id), ('isPolling', 'true'),
                           ('lccid', self.lcc_id), ('_', str(current_millis)) )
-        up_url = IComfort3Session.create_url(IComfort3Zone.DETAILS_PATH,
+        up_url = IC3Session.create_url(IComfort3Zone.DETAILS_PATH,
                                                  details_query)
         update = session.request_json(up_url, referer_url)
         return update
@@ -161,12 +162,11 @@ class IComfort3Zone(object):
         return self.__parse_update(update_json)
 
 
-    # FIXME: Do we want getters/setters for each variable?
-    def fetch_home_name(self, session):
-        update = self.fetch_update(session)
-        return update['data']['HomeName']
+    def set_away_mode(self, session):
+        """ Post to set away mode for an LCC/Zone, and return current state.
+        """
+        set_away_url = IC3Session.create_url(IComfort3Zone.SET_AWAY_PATH)
+        pass
 
 
-    #
-    def fetch_notifications(self, session):
-        return []   
+
