@@ -226,11 +226,15 @@ class IComfort3Session(object):
         return True    
 
 
-    def login(self, email, password):
+    def login(self, email, password, relogin=False):
         header_dict = {}
         header_dict['Referer'] = "https://www.lennoxicomfort.com/Landing.html"
+        if relogin:
+            query = '_isSessionExpired=True'
+        else:
+            query = ''
         parts = ('https', IComfort3Session.DOMAIN,
-                 IComfort3Session.LOGIN_PATH, '', '')
+                 IComfort3Session.LOGIN_PATH, query, '')
         login_url = urlunsplit(parts)
         login_page = self.session.get(login_url, headers=header_dict)
         if login_page.status_code != 200:
