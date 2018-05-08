@@ -82,10 +82,12 @@ logger.setLevel(logging.WARN)
   uname/password changes will fix this issue (for 15 minutes).
 """
 class IComfort3Zone(object):
+    MYHOMES_PATH = 'Dashboard/MyHomes'
     HD_REFERER_PATH = 'Dashboard/HomeDetails'
     DETAILS_PATH = 'Dashboard/RefreshLatestZoneDetailByIndex'
     SET_AWAY_PATH = 'Dashboard/SetAwayMode'
     CANCEL_AWAY_PATH = 'Dashboard/CancelAwayMode'
+    CHANGE_SET_POINT = 'Dashboard/ChangeSetPoint'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
@@ -185,7 +187,7 @@ class IComfort3Zone(object):
             return False
         return self.__parse_update(resp_json)
 
-    def change_set_point(self, session, cool, heat)
+    def change_set_point(self, session, cool, heat):
         """ Set new heat/cool ScheduleHold values.
 
             By default, these changes will last until the next Period.
@@ -199,13 +201,15 @@ class IComfort3Zone(object):
 
             FIXME: Does not support PerfectTemp today.
         """
+        hd_referer = IC3Session.create_url(IComfort3Zone.MYHOMES_PATH)
+        session.request_url(self.hd_url, hd_referer)
         current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
-        query = [('zoneId', self.zone_id), 'lccId', self.lcc_id),
+        query = [('zoneId', self.zone_id), ('lccId', self.lcc_id),
                  ('coolSetPoint', str(cool)), ('heatSetPoint', str(heat)),
                  ('isPerfectTempOn', 'false'), ('_', str(current_millis))]
         change_url = IC3Session.create_url(IComfort3Zone.CHANGE_SET_POINT,
                                            query)
-        update = session.request_json(change_url, referer_url=self.hd_url)
-        return update
+        resp_json = session.request_json(change_url, referer_url=self.hd_url)
+        return self.__parse_update(resp_json)
 
 

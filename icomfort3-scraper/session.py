@@ -175,6 +175,9 @@ class IComfort3Session(object):
         # Request failed - our session is invalid
             if response_code == 'Fail':
                 print("Response code was Fail.")
+                print(response.request.url)
+                print(response.request.headers)
+                print(response.request.cookies)
                 print(response_json)
                 self.login_complete = False
                 return False
@@ -188,9 +191,15 @@ class IComfort3Session(object):
         header_dict['X-Requested-With'] = 'XMLHttpRequest'
         header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
         header_dict['ADRUM'] = 'isAjax:true'
+        header_dict['Accept-Language'] = 'en-US,en;q=0.9'
         if referer_url:
             header_dict['Referer'] = referer_url 
         response = self.session.get(url, headers=header_dict)
+        #print(response.status_code)
+        #print(response.request.url)
+        #print(response.request.headers)
+        #print(response.headers)
+        #print(response.text)
         return self.__process_as_json(response)
 
 
@@ -255,6 +264,13 @@ class IComfort3Session(object):
                    ('Password', password)]
         logged_in = self.session.post(login_url, headers=post_heads,
                                       data=payload)
+        if logged_in.status_code != 200:
+            print(logged_in.request.url)
+            print(logged_in.request.headers)
+            print(logged_in.request.cookies)
+            print(logged_in.text)
+            print(logged_in.history)
+            logged_in.raise_for_status()
         # Test if we are logged in - check for login error?
         self.login_complete = True
         return self.__initialize_session()
