@@ -13,3 +13,6 @@ for home in s.homes:
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
         print(update)
+
+out = s.logout()
+print(out.status_code)

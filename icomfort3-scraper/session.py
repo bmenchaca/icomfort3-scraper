@@ -94,12 +94,14 @@ class IComfort3Session(object):
     DOMAIN = 'www.lennoxicomfort.com'
     STARTING_COOKIES = { 'iComfort': 'ic3' }
     LOGIN_PATH = 'Account/Login'
+    LOGOUT_PATH = 'Account/SignOut'
     RELOGIN_LOC = '/Account/Login?_isSessionExpired=True'
 
     def __init__(self):
         self.session = requests.Session()
         self.login_complete = False
         self.initialized = False
+        self.req_verf_token = ''
         self.homes = {}
 
         requests.utils.add_dict_to_cookiejar(self.session.cookies,
@@ -237,14 +239,14 @@ class IComfort3Session(object):
         login_page_soup = BeautifulSoup(login_page.content, "lxml")
         form = login_page_soup.find('form')
         token_entry = {'name': '__RequestVerificationToken'}
-        req_verf_token = form.find('input', token_entry).get('value')
+        self.req_verf_token = form.find('input', token_entry).get('value')
         # Handle not finding token
         # Headers for the POST
         post_heads = {}
         post_heads['Referer'] = login_url
         post_heads['Cache-Control'] = 'max-age=0'
         post_heads['Origin'] = 'https://www.lennoxicomfort.com'
-        payload = [('__RequestVerificationToken', req_verf_token),
+        payload = [('__RequestVerificationToken', self.req_verf_token),
                    ('EmailAddress', email),
                    ('Password', password)]
         logged_in = self.session.post(login_url, headers=post_heads,
@@ -252,3 +254,14 @@ class IComfort3Session(object):
         # Test if we are logged in - check for login error?
         self.login_complete = True
         return self.__initialize_session()
+
+
+    def logout(self):
+        logout_url = IComfort3Session.create_url(IComfort3Session.LOGOUT_PATH)
+        payload = [('__RequestVerificationToken', self.req_verf_token)]
+        post_resp = self.post_url(logout_url, payload)
+        self.login_complete = False
+        self.initialized = False
+        self.req_verf_token = ''
+        self.homes = {}
+        return post_resp
