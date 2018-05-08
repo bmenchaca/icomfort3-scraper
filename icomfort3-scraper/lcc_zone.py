@@ -126,8 +126,6 @@ class IComfort3Zone(object):
             flat['SingleSetPoint'] = flat['SingleSetPoint']['Value']
             # This is only for visuals
             del flat['TemperatureRange']
-            # Done with zone detail now - pop
-            print("No zone details.")
         del update['data']['zoneDetail']
         del update['data']['zonepaging']
         # Copy the rest of data
@@ -140,9 +138,9 @@ class IComfort3Zone(object):
     def fetch_update(self, session):
         """ Fetches an update from the web API.
 
-        Uses the session to fetch the latest status info from the web API for a 
-        thermostat, and returns the resulting dictionary.  If there is a problem
-        an exception will be thrown.
+        Uses the session to fetch the latest status info from the web API for a
+        thermostat, and returns the resulting dictionary.  If there is a
+        problem an exception will be thrown.
 
         Args:
             session: A logged-in session with permission to access this zone.
@@ -161,6 +159,7 @@ class IComfort3Zone(object):
         if not update_json:
             return False
         return self.__parse_update(update_json)
+
 
     # FIXME: Do we want getters/setters for each variable?
     def fetch_home_name(self, session):

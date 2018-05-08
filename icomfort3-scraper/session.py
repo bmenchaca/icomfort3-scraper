@@ -99,6 +99,7 @@ class IComfort3Session(object):
     def __init__(self):
         self.session = requests.Session()
         self.login_complete = False
+        self.initialized = False
         requests.utils.add_dict_to_cookiejar(self.session.cookies,
                                              IComfort3Session.STARTING_COOKIES)
         self.session.headers.update({'Accept-Encoding': 'gzip, deflate, br'})
@@ -162,7 +163,6 @@ class IComfort3Session(object):
             response_json = response.json()
             response_code = response_json['Code']
         # We don't know what happened here - can't parse.
-        # FIXME: Print probably?
             if not response_code:
                 print("Could not find resonse code.")
                 print(response_json)
@@ -182,6 +182,10 @@ class IComfort3Session(object):
         query = urlencode(query_params)
         parts = ('https', cls.DOMAIN, path, query, '')
         return urlunsplit(parts)
+
+
+    def __initial_requests(self):
+        pass    
 
 
     def login(self, email, password):
