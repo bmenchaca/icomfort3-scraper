@@ -16,7 +16,7 @@ for home in homes:
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
         print("Before Change Zone Schedule: %s" % update['ScheduleId'])
-        change = z.change_zone_schedule_id(s, 1)
+        change = z.change_zone_schedule_id(s, 2)
         after = z.fetch_update(s)
         print("After Change Zone Schedule: %s" % update['ScheduleId'])
 
