@@ -88,6 +88,8 @@ class IComfort3Zone(object):
     SET_AWAY_PATH = 'Dashboard/SetAwayMode'
     CANCEL_AWAY_PATH = 'Dashboard/CancelAwayMode'
     CHANGE_SET_POINT = 'Dashboard/ChangeSetPoint'
+    MODE_SCHED_PATH = 'ModesSchedules/ModesSchedulesMenu'
+    CHANGE_ZONE_SCHED = 'ModesSchedules/ChangeZoneScheduleId'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
@@ -100,6 +102,9 @@ class IComfort3Zone(object):
                                   ('refreshZonedetail', 'False') )
         self.hd_url = IC3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
                                             details_referer_query)  
+        mode_sched_query = ( ('zoneId', self.zone_id), ('lccId', self.lcc_id) )
+        self.ms_url = IC3Session.create_url(IComfort3Zone.MODE_SCHED_PATH,
+                                            mode_sched_query)
 
 
     def __send_update_request(self, session):
@@ -214,4 +219,31 @@ class IComfort3Zone(object):
         resp_json = session.request_json(change_url, referer_url=self.hd_url)
         return self.__parse_update(resp_json)
 
+
+    def change_zone_schedule_id(self, session, schedule_id):
+        """ Change the current zone Schedule by ID.
+        """
+        session.request_url(self.ms_url, self.hd_url)
+        payload = [('lccId', self.lcc_id), ('zoneId', self.zone_id),
+                   ('scheduleId', schedule_id)]
+        heads = {}
+        heads['ADRUM'] = 'isAjax:true'
+        heads['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        heads['Accept-Language'] = 'en-US,en;q=0.9'
+        heads['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8'
+        heads['Host'] = 'www.lennoxicomfort.com'
+        heads['X-Requested-With'] = 'XMLHttpRequest'
+        change_zs_url = IC3Session.create_url(IComfort3Zone.CHANGE_ZONE_SCHED)
+        resp = session.post_url(change_zs_url, post_data=payload, headers=heads,
+                                referer_url=self.ms_url)
+        #print(resp.request.url)
+        #print(resp.request.headers)
+        #print(resp.status_code)
+        #print(resp.text)
+        resp.raise_for_status
+        return resp.status_code == 200
+
+    def change_system_mode_manual(self, session, schedule_id, period_id, mode):
+        """ Change to a manually controlled mode rather than a schedule.
+        """
 
