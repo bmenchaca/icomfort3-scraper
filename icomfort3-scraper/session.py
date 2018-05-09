@@ -131,8 +131,8 @@ class IComfort3Session(object):
         return resp
 
 
-    def post_url(self, url, post_data=[], referer_url=''):
-        post_heads = {}
+    def post_url(self, url, post_data=[], headers={}, referer_url=''):
+        post_heads = headers
         if referer_url:
             post_heads['Referer'] = referer_url
         post_heads['Origin'] = "https://" + IComfort3Session.DOMAIN
@@ -171,9 +171,9 @@ class IComfort3Session(object):
         post_heads['Accept'] = 'application/json, text/javascript, */*; q=0.01'
         resp = self.session.post(url, headers=post_heads, data=post_data)
         return self.__process_as_json(resp)
-        
 
-    def __process_as_json(self, response):
+
+    def process_as_json(self, response):
         if response.headers['content-type'] == 'text/html; charset=utf-8':
             print("Response is HTML.")
             print(response.request.url)
@@ -199,7 +199,6 @@ class IComfort3Session(object):
                 print("Response code was Fail.")
                 print(response.request.url)
                 print(response.request.headers)
-                print(response.request.cookies)
                 print(response_json)
                 self.login_complete = False
                 return False
