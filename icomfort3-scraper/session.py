@@ -157,7 +157,7 @@ class IComfort3Session(object):
         #print(response.request.headers)
         #print(response.headers)
         #print(response.text)
-        return self.__process_as_json(response)
+        return response
 
 
     def post_url_json(self, url, post_data=[], referer_url=''):
@@ -169,8 +169,10 @@ class IComfort3Session(object):
         post_heads['Origin'] = "https://" + IComfort3Session.DOMAIN
         post_heads['X-Requested-With'] = 'XMLHttpRequest'
         post_heads['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        post_heads['ADRUM'] = 'isAjax:true'
+        post_heads['Accept-Language'] = 'en-US,en;q=0.9'
         resp = self.session.post(url, headers=post_heads, data=post_data)
-        return self.__process_as_json(resp)
+        return resp
 
 
     def process_as_json(self, response):

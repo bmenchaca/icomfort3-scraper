@@ -90,6 +90,7 @@ class IComfort3Zone(object):
     CHANGE_SET_POINT = 'Dashboard/ChangeSetPoint'
     MODE_SCHED_PATH = 'ModesSchedules/ModesSchedulesMenu'
     CHANGE_ZONE_SCHED = 'ModesSchedules/ChangeZoneScheduleId'
+    SYSMODE_MANUAL = 'modesSchedules/ChangeSystemModeManual'
 
     def __init__(self, home_id, lcc_id, zone_id):
         # static, pre-configured entries
@@ -113,8 +114,9 @@ class IComfort3Zone(object):
                           ('lccid', self.lcc_id), ('_', str(current_millis)) )
         up_url = IC3Session.create_url(IComfort3Zone.DETAILS_PATH,
                                                  details_query)
-        update = session.request_json(up_url, self.hd_url)
-        return update
+        resp = session.request_json(up_url, self.hd_url)
+        resp_json = session.process_as_json(resp)
+        return resp_json
 
 
     # The requestor validated that the session has not Failed
@@ -177,7 +179,8 @@ class IComfort3Zone(object):
         """
         set_away_url = IC3Session.create_url(IComfort3Zone.SET_AWAY_PATH)
         payload = [('lccId', self.lcc_id), ('currentzoneId', self. zone_id)]
-        resp_json = session.post_url_json(set_away_url, payload, self.hd_url)
+        resp = session.post_url_json(set_away_url, payload, self.hd_url)
+        rsep_json = session.process_as_json(resp)
         if not resp_json:
             return False
         return self.__parse_update(resp_json)
@@ -189,7 +192,8 @@ class IComfort3Zone(object):
         cancel_away_url = IC3Session.create_url(IComfort3Zone.CANCEL_AWAY_PATH)
         payload = [('lccId', self.lcc_id), ('currentzoneId', self. zone_id),
                    ('smartawayS', 'false')]
-        resp_json = session.post_url_json(cancel_away_url, payload, self.hd_url)
+        resp = session.post_url_json(cancel_away_url, payload, self.hd_url)
+        resp_json = session.process_as_json(resp)
         if not resp_json:
             return False
         return self.__parse_update(resp_json)
@@ -216,34 +220,31 @@ class IComfort3Zone(object):
                  ('isPerfectTempOn', 'false'), ('_', str(current_millis))]
         change_url = IC3Session.create_url(IComfort3Zone.CHANGE_SET_POINT,
                                            query)
-        resp_json = session.request_json(change_url, referer_url=self.hd_url)
+        resp = session.request_json(change_url, referer_url=self.hd_url)
+        resp_json = session.process_as_json(resp)
         return self.__parse_update(resp_json)
 
 
     def change_zone_schedule_id(self, session, schedule_id):
         """ Change the current zone Schedule by ID.
         """
-        session.request_url(self.ms_url, self.hd_url)
         payload = [('lccId', self.lcc_id), ('zoneId', self.zone_id),
                    ('scheduleId', schedule_id)]
-        heads = {}
-        heads['ADRUM'] = 'isAjax:true'
-        heads['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-        heads['Accept-Language'] = 'en-US,en;q=0.9'
-        heads['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8'
-        heads['Host'] = 'www.lennoxicomfort.com'
-        heads['X-Requested-With'] = 'XMLHttpRequest'
         change_zs_url = IC3Session.create_url(IComfort3Zone.CHANGE_ZONE_SCHED)
-        resp = session.post_url(change_zs_url, post_data=payload, headers=heads,
-                                referer_url=self.ms_url)
-        #print(resp.request.url)
-        #print(resp.request.headers)
-        #print(resp.status_code)
-        #print(resp.text)
+        resp = session.post_url_json(change_zs_url, post_data=payload, 
+                                     referer_url=self.ms_url)
         resp.raise_for_status
         return resp.status_code == 200
 
     def change_system_mode_manual(self, session, schedule_id, period_id, mode):
         """ Change to a manually controlled mode rather than a schedule.
         """
+        payload = [('zoneId', self.zone_id), ('lccId', self.lcc_id),
+                   ('scheduleId', schedule_id), ('periodId', period_id),
+                   ('mode', mode)]
+        sysmode_url = IC3Session.create_url(IComfort3Zone.SYSMODE_MANUAL)
+        resp = session.post_url_json(sysmode_url, post_data=payload, 
+                                     referer_url=self.ms_url)
+        resp.raise_for_status
+        return resp.status_code == 200
 
