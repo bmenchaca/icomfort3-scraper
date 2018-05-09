@@ -153,7 +153,7 @@ class IComfort3Session(object):
             header_dict['Referer'] = referer_url 
         response = self.session.get(url, headers=header_dict)
         #print(response.status_code)
-        print(response.request.url)
+        #print(response.request.url)
         #print(response.request.headers)
         #print(response.headers)
         #print(response.text)

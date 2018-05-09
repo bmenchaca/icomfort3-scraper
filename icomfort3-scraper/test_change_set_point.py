@@ -11,7 +11,7 @@ homes = s.fetch_home_zones()
 
 for home in homes:
     for (lcc, zone) in homes[home]:
-        s.set_context(home, lcc, zone)
+        #s.set_context(home, lcc, zone)
         z = IComfort3Zone(home, lcc, zone)
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
@@ -26,7 +26,7 @@ for home in homes:
 
 for home in homes:
     for (lcc, zone) in homes[home]:
-        s.set_context(home, lcc, zone)
+        #s.set_context(home, lcc, zone)
         z = IComfort3Zone(home, lcc, zone)
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
