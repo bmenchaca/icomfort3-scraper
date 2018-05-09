@@ -95,15 +95,15 @@ class IComfort3Session(object):
     STARTING_COOKIES = { 'iComfort': 'ic3' }
     LOGIN_PATH = 'Account/Login'
     LOGOUT_PATH = 'Account/SignOut'
+    MYHOMES_PATH = 'Dashboard/MyHomes'
+    HOMEZONES_PATH = 'Dashboard/GetHomeZones'
+    DETAILS_PATH = 'Dashboard/HomeDetails'
     RELOGIN_LOC = '/Account/Login?_isSessionExpired=True'
 
     def __init__(self):
         self.session = requests.Session()
         self.login_complete = False
-        self.initialized = False
         self.req_verf_token = ''
-        self.homes = {}
-
         requests.utils.add_dict_to_cookiejar(self.session.cookies,
                                              IComfort3Session.STARTING_COOKIES)
         self.session.headers.update({'Accept-Encoding': 'gzip, deflate, br'})
@@ -113,6 +113,7 @@ class IComfort3Session(object):
         self.session.headers.update({'Host': 'www.lennoxicomfort.com'})
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36'})
 
+
     def request_url(self, url, referer_url=''):
         header_dict = {}
         header_dict['Upgrade-Insecure-Requests'] = '1'
@@ -121,7 +122,6 @@ class IComfort3Session(object):
             return 0
         if referer_url:
             header_dict['Referer'] = referer_url
-
         resp = self.session.get(url, headers=header_dict)
         if resp.status_code == 302:
             if 'Location' in resp.headers:
@@ -140,6 +140,26 @@ class IComfort3Session(object):
         return resp
 
 
+    def request_json(self, url, referer_url=''):
+        if not self.login_complete:
+            print("request_json: not logged in")
+            return 0
+        header_dict = {}
+        header_dict['X-Requested-With'] = 'XMLHttpRequest'
+        header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+        header_dict['ADRUM'] = 'isAjax:true'
+        header_dict['Accept-Language'] = 'en-US,en;q=0.9'
+        if referer_url:
+            header_dict['Referer'] = referer_url 
+        response = self.session.get(url, headers=header_dict)
+        #print(response.status_code)
+        print(response.request.url)
+        #print(response.request.headers)
+        #print(response.headers)
+        #print(response.text)
+        return self.__process_as_json(response)
+
+
     def post_url_json(self, url, post_data=[], referer_url=''):
         if not self.login_complete:
             return 0
@@ -156,6 +176,8 @@ class IComfort3Session(object):
     def __process_as_json(self, response):
         if response.headers['content-type'] == 'text/html; charset=utf-8':
             print("Response is HTML.")
+            print(response.request.url)
+            print(response.text)
             html_soup = BeautifulSoup(response.content, "lxml")
             divs = html_soup.findAll("div", {"class": "tsbody"})
             if divs:
@@ -184,25 +206,6 @@ class IComfort3Session(object):
             return response_json
 
 
-    def request_json(self, url, referer_url=''):
-        if not self.login_complete:
-            return 0
-        header_dict = {}
-        header_dict['X-Requested-With'] = 'XMLHttpRequest'
-        header_dict['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-        header_dict['ADRUM'] = 'isAjax:true'
-        header_dict['Accept-Language'] = 'en-US,en;q=0.9'
-        if referer_url:
-            header_dict['Referer'] = referer_url 
-        response = self.session.get(url, headers=header_dict)
-        #print(response.status_code)
-        #print(response.request.url)
-        #print(response.request.headers)
-        #print(response.headers)
-        #print(response.text)
-        return self.__process_as_json(response)
-
-
     @classmethod
     def create_url(cls, path, query_params=''):
         query = urlencode(query_params)
@@ -210,18 +213,35 @@ class IComfort3Session(object):
         return urlunsplit(parts)
 
 
-    def __initialize_session(self):
-        # Pulls the list of Homes, LCCs, and Zones, and initializes the back-end state
-        # machine so that polling can start.
+    def set_context(self, home_id, lcc_id, zone_id):
+        login_url = IComfort3Session.create_url(IComfort3Session.LOGIN_PATH)
+        myhomes_url = IComfort3Session.create_url(IComfort3Session.MYHOMES_PATH)
+        myhomes = self.request_url(myhomes_url, login_url)
+        zones_query = {'homeID': home_id}
+        zones_url = IComfort3Session.create_url(IComfort3Session.HOMEZONES_PATH,
+                                                query_params=zones_query)
+        zones = self.request_url(zones_url, myhomes_url)
+        details_query = [('zoneId', zone_id), ('homeId', home_id),
+                         ('lccId', lcc_id), ('refreshZonedetail', 'False')]
+        details_url = IComfort3Session.create_url(IComfort3Session.DETAILS_PATH,
+                                                  query_params=details_query)
+        details = self.request_url(details_url, myhomes_url)
+        return
+
+
+
+    def fetch_home_zones(self):
+        # Pulls the list of Homes, LCCs, and Zones
         # First, pull the list of homes
+        homes = {}
         my_homes_url = IComfort3Session.create_url('Dashboard/MyHomes')
         my_homes = self.session.get(my_homes_url)
         my_homes_soup = BeautifulSoup(my_homes.content, "lxml")
         home_lists = my_homes_soup.findAll('ul', {'class': 'HomeZones'})
         for home in home_lists:
-            self.homes[home.get("data-homeid")] = []
+            homes[home.get("data-homeid")] = []
         # Iterate over the list of homes, and pull all of the LCC_ID/Zones
-        for home in self.homes.keys():
+        for home in homes.keys():
             zones_url = IComfort3Session.create_url('Dashboard/GetHomeZones')
             zones_query = {'homeID': home}
             zones = self.session.get(zones_url, params=zones_query)
@@ -229,10 +249,8 @@ class IComfort3Session(object):
             hrefs = zones_soup.findAll('a', href=True)
             for href in hrefs:
                 params = parse_qs(urlparse(href['href']).query)
-                self.homes[home].append((params['lccId'][0],
-                                         params['zoneId'][0]))
-        self.initialized = True
-        return True    
+                homes[home].append((params['lccId'][0], params['zoneId'][0]))
+        return homes    
 
 
     def login(self, email, password, relogin=False):
@@ -266,14 +284,14 @@ class IComfort3Session(object):
                                       data=payload)
         if logged_in.status_code != 200:
             print(logged_in.request.url)
-            print(logged_in.request.headers)
-            print(logged_in.request.cookies)
-            print(logged_in.text)
-            print(logged_in.history)
+            #print(logged_in.request.headers)
+            #print(logged_in.request.cookies)
+            #print(logged_in.text)
+            #print(logged_in.history)
             logged_in.raise_for_status()
         # Test if we are logged in - check for login error?
         self.login_complete = True
-        return self.__initialize_session()
+        return True
 
 
     def logout(self):
@@ -281,7 +299,6 @@ class IComfort3Session(object):
         payload = [('__RequestVerificationToken', self.req_verf_token)]
         post_resp = self.post_url(logout_url, payload)
         self.login_complete = False
-        self.initialized = False
         self.req_verf_token = ''
         self.homes = {}
         return post_resp

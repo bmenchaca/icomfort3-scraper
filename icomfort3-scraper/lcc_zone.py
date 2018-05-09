@@ -101,6 +101,7 @@ class IComfort3Zone(object):
         self.hd_url = IC3Session.create_url(IComfort3Zone.HD_REFERER_PATH,
                                             details_referer_query)  
 
+
     def __send_update_request(self, session):
         current_millis = (int(time.time()) * 1000) + random.randint(0, 999)
         details_query = ( ('zoneid', self.zone_id), ('isPolling', 'true'),
@@ -114,7 +115,7 @@ class IComfort3Zone(object):
     # The requestor validated that the session has not Failed
     def __parse_update(self, update):
         if not update['Code'] == 'LCC_ONLINE':
-            return False
+            print("LCC is offline.")
         # Remove Unused temperature Range
         # Check if zoneDetail exists
         flat = dict()
@@ -137,6 +138,7 @@ class IComfort3Zone(object):
             flat[k] = v
         flat['Code'] = update['Code']
         return flat
+
 
     
     def fetch_update(self, session):
