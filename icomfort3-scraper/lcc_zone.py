@@ -130,9 +130,8 @@ class IComfort3Zone(object):
             # Copy all other zone details
             for (k,v) in update['data']['zoneDetail'].items():
                 flat[k] = v
-            # Ambient temp comes across not flattened, and as a string
+            # Ambient temp comes across as a string, and can be non-numeric
             flat['AmbientTemperature'] = flat['AmbientTemperature']['Value']
-            flat['AmbientTemperature'] = int(flat['AmbientTemperature'])
             flat['CoolSetPoint'] = flat['CoolSetPoint']['Value']
             flat['HeatSetPoint'] = flat['HeatSetPoint']['Value']
             flat['SingleSetPoint'] = flat['SingleSetPoint']['Value']
