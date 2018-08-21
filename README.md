@@ -11,17 +11,18 @@ The heirachy of constructs in the Lennox Page looks like this:
   
 ## Zones
   Each Zone contains a Mode, which is one of:
-    * (Off, Cool Only, Heat Only, Heat/Cool)
+  * (Off, Cool Only, Heat Only, Heat/Cool)
+    
   Each of these Modes contain required Temperatures, as:
-    * (Off = None,
-    *  Cool = Max Indoor Temp; >= Cooling Starts,
-    *  Heat = Min Indoor Temp <= Heating Starts,
-    *  Heat/Cool = Max and Min as above.  As a note, these cannot be closer than 3 degrees from each other.
+  * (Off = None,
+  *  Cool = Max Indoor Temp; >= Cooling Starts,
+  *  Heat = Min Indoor Temp <= Heating Starts,
+  *  Heat/Cool = Max and Min as above.  As a note, these cannot be closer than 3 degrees from each other.
   Additionally, each zone contains a Fan setting:
-    *  On = Fan is turned on regardless of Climate Control,
-    *  Auto = Fan is controlled by Climate Control,
-    *  Circulate = As Auto, and also runs at a low rate between CC cycles.  The amount of time circulate runs per hour can be configured from the Settings->Fan->Circulate option (9 to 27 minutes).
-    *  Allergen Defender = Circulates air inside when the air quality is bad outside to filter it.  This is basically Circulate mode that only runs if the Air Quality outside is poor.  For this to be an available option, Allergen Defender must be enabled in the Settings->Fan menu under Allergen Defender.
+  *  On = Fan is turned on regardless of Climate Control,
+  *  Auto = Fan is controlled by Climate Control,
+  *  Circulate = As Auto, and also runs at a low rate between CC cycles.  The amount of time circulate runs per hour can be configured from the Settings->Fan->Circulate option (9 to 27 minutes).
+  *  Allergen Defender = Circulates air inside when the air quality is bad outside to filter it.  This is basically Circulate mode that only runs if the Air Quality outside is poor.  For this to be an available option, Allergen Defender must be enabled in the Settings->Fan menu under Allergen Defender.
       
 ## Schedules
   The Mode and Fan settings can be automatically adjusted based on one or more Schedules.  These schedules change based on season: Summer, Winter, and Spring/Fall.  Each schedule is subdivided into Periods.  Each Period has a start time, as well as Mode and Fan settings.  Schedules can be configured to have the same Periods for all days of the week, different Periods for weekdays and weekends, or a different set of Periods every day.  For each configured day, there may be at most 4 periods.
