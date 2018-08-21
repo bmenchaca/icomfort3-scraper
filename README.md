@@ -18,6 +18,7 @@ The heirachy of constructs in the Lennox Page looks like this:
   *  Cool = Max Indoor Temp; >= Cooling Starts,
   *  Heat = Min Indoor Temp <= Heating Starts,
   *  Heat/Cool = Max and Min as above.  As a note, these cannot be closer than 3 degrees from each other.
+  
   Additionally, each zone contains a Fan setting:
   *  On = Fan is turned on regardless of Climate Control,
   *  Auto = Fan is controlled by Climate Control,
