@@ -2,6 +2,9 @@ from distutils.core import setup
 setup(
     name = 'icomfort3',
     packages = ['icomfort3'],
+    install_requires=[
+        'requests',
+    ],
     version = '0.1',
     description = 'A library to access your Lennox S30, M30, and E30 thermostats by scraping https://lennoxicomfort.com',
     author = 'Ben Menchaca',
