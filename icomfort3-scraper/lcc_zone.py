@@ -179,7 +179,7 @@ class IComfort3Zone(object):
         set_away_url = IC3Session.create_url(IComfort3Zone.SET_AWAY_PATH)
         payload = [('lccId', self.lcc_id), ('currentzoneId', self. zone_id)]
         resp = session.post_url_json(set_away_url, payload, self.hd_url)
-        rsep_json = session.process_as_json(resp)
+        resp_json = session.process_as_json(resp)
         if not resp_json:
             return False
         return self.__parse_update(resp_json)
