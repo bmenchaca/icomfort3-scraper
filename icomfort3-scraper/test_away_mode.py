@@ -7,9 +7,10 @@ from lcc_zone import IComfort3Zone
 
 s = IComfort3Session()
 s.login(secrets.icomfort_username, secrets.icomfort_password)
-for home in s.homes:
-    lcc_zones = s.homes[home]
-    for (lcc, zone) in lcc_zones:
+homes = s.fetch_home_zones()
+print ("Starting Away Mode test for homes %s." % homes)
+for home in homes:
+    for (lcc, zone) in homes[home]:
         z = IComfort3Zone(home, lcc, zone)
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
@@ -26,9 +27,8 @@ for home in s.homes:
             away = z.set_away_mode(s)
             print("After Set Away: %s" % away['isSysteminAwayMode'])
 
-for home in s.homes:
-    lcc_zones = s.homes[home]
-    for (lcc, zone) in lcc_zones:
+for home in homes:
+    for (lcc, zone) in homes[home]:
         z = IComfort3Zone(home, lcc, zone)
         print ("Home %s, lcc %s, zone %s" % (home, lcc, zone))
         update = z.fetch_update(s)
